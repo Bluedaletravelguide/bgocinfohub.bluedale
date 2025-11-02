@@ -2,45 +2,54 @@
 
 namespace App\Support\Notifications;
 
-use App\Models\DeliveryLog;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class DeliveryLogger
 {
-    public function shouldDebounce(int $userId, int $itemId, string $channel, string $event): bool
+    /**
+     * Check if notification should be debounced (skipped due to recent send)
+     */
+    public function shouldDebounce(int $userId, int $itemId, string $channel, string $event, int $minutes = 5): bool
     {
-        $since = now()->subDay();
-        return DeliveryLog::query()
-            ->where('user_id', $userId)
-            ->where('item_id', $itemId)
-            ->where('channel', $channel)
-            ->where('event', $event)
-            ->where('sent_at', '>=', $since)
-            ->exists();
+        $key = $this->getCacheKey($userId, $itemId, $channel, $event);
+        return Cache::has($key);
     }
 
-    public function logSent(int $userId, int $itemId, string $channel, string $event, array $meta = []): void
+    /**
+     * Log that a notification was sent
+     */
+    public function logSent(int $userId, int $itemId, string $channel, string $event, int $minutes = 5): void
     {
-        DeliveryLog::create([
+        $key = $this->getCacheKey($userId, $itemId, $channel, $event);
+        Cache::put($key, true, now()->addMinutes($minutes));
+
+        Log::info('Notification sent', [
             'user_id' => $userId,
             'item_id' => $itemId,
             'channel' => $channel,
-            'event'   => $event,
-            'status'  => 'sent',
-            'meta'    => $meta ?: null,
-            'sent_at' => now(),
+            'event' => $event,
         ]);
     }
 
-    public function logSkipped(int $userId, int $itemId, string $channel, string $event, array $meta = []): void
+    /**
+     * Log that a notification was skipped
+     */
+    public function logSkipped(int $userId, int $itemId, string $channel, string $event, array $metadata = []): void
     {
-        DeliveryLog::create([
+        Log::info('Notification skipped', array_merge([
             'user_id' => $userId,
             'item_id' => $itemId,
             'channel' => $channel,
-            'event'   => $event,
-            'status'  => 'skipped',
-            'meta'    => $meta ?: null,
-            'sent_at' => now(),
-        ]);
+            'event' => $event,
+        ], $metadata));
+    }
+
+    /**
+     * Generate cache key for debouncing
+     */
+    protected function getCacheKey(int $userId, int $itemId, string $channel, string $event): string
+    {
+        return "notification:{$userId}:{$itemId}:{$channel}:{$event}";
     }
 }

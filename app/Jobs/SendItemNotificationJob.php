@@ -4,9 +4,9 @@ namespace App\Jobs;
 
 use App\Mail\ItemEventMail;
 use App\Models\Item;
-use App\Support\Notification\RecipientResolver;
-use App\Support\Notification\DeliveryLogger;
-use App\Support\Notification\ItemEvent;
+use App\Support\Notifications\RecipientResolver;
+use App\Support\Notifications\DeliveryLogger;
+use App\Support\Notifications\ItemEvent; 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
