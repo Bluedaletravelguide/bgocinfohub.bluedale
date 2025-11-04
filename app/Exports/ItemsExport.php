@@ -108,34 +108,34 @@ class ItemsExport implements FromCollection, WithMapping, WithEvents, ShouldAuto
 
         // Check if this is a column header row
         if (isset($item->is_column_header) && $item->is_column_header) {
-            return [
-                'DATE IN',
-                'DEADLINE',
-                'ASSIGN BY',
-                'ASSIGN TO',
-                'COMPANY',
-                'PIC',
-                'PRODUCT',
-                'TASK',
-                'REMARKS',
-                'INTERNAL/CLIENT',
-                'STATUS',
-            ];
+           return [
+    'DATE IN',
+    'DEADLINE',
+    'ASSIGN BY',
+    'ASSIGN TO',
+    'COMPANY',
+    'PIC',
+    'TASK',        // ← was PRODUCT; moved up
+    'DEPARTMENT',  // ← was TASK; renamed from PRODUCT
+    'REMARKS',
+    'INTERNAL/CLIENT',
+    'STATUS',
+];
         }
 
-        return [
-            $item->date_in   ? Carbon::parse($item->date_in)->format('d/m/Y') : '',
-            $item->deadline  ? Carbon::parse($item->deadline)->format('d/m/Y') : '',
-            $item->assign_by_id ?? '',
-            $item->assign_to_id ?? '',
-            $item->company_id ?? '',
-            $item->pic_name ?? '',
-            $item->product_id ?? '',
-            $item->task ?? '',
-            $item->remarks ?? '',
-            $item->type_label ?? '',
-            $item->status ?? '',
-        ];
+       return [
+    $item->date_in   ? Carbon::parse($item->date_in)->format('d/m/Y') : '',
+    $item->deadline  ? Carbon::parse($item->deadline)->format('d/m/Y') : '',
+    $item->assign_by_id ?? '',
+    $item->assign_to_id ?? '',
+    $item->company_id ?? '',
+    $item->pic_name ?? '',
+    $item->task ?? '',          // ← TASK comes first now
+    $item->product_id ?? '',    // ← Department value (from product_id)
+    $item->remarks ?? '',
+    $item->type_label ?? '',
+    $item->status ?? '',
+];
     }
 
     public function registerEvents(): array

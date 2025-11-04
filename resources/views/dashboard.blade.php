@@ -193,18 +193,6 @@
 /* === Product (7) - Medium width === */
 .data-table thead th:nth-child(7),
 .data-table tbody td:nth-child(7) {
-  width: 130px !important;
-  max-width: 130px !important;
-  min-width: 130px !important;
-  padding: 6px 8px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* === Task (8) - Wider with ellipsis === */
-.data-table thead th:nth-child(8),
-.data-table tbody td:nth-child(8) {
   width: 190px !important;
   max-width: 190px !important;
   min-width: 190px !important;
@@ -214,6 +202,17 @@
   padding: 6px 8px;
 }
 
+/* === Task (8) - Wider with ellipsis === */
+.data-table thead th:nth-child(8),
+.data-table tbody td:nth-child(8) {
+  width: 130px !important;
+  max-width: 130px !important;
+  min-width: 130px !important;
+  padding: 6px 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 /* === Remarks (9) - Wider with ellipsis === */
 .data-table thead th:nth-child(9),
 .data-table tbody td:nth-child(9) {
@@ -414,7 +413,7 @@
           </select>
         </div>
         <div class="form-group animate-fade-in" style="animation-delay: 0.3s;">
-          <label class="form-label">Product</label>
+          <label class="form-label">Department</label>
           <select id="f_product_id" class="form-select">
             <option value="">All</option>
             @foreach($distinct['products'] as $v)
@@ -486,8 +485,9 @@
 
 <th><span class="th-content">Company</span></th>
 <th><span class="th-content">PIC</span></th>
-<th><span class="th-content">Product</span></th>
 <th><span class="th-content">Task</span></th>
+<th><span class="th-content">Department</span></th>
+
 <th><span class="th-content">Remarks</span></th>
 <th><span class="th-content">Int/Client</span></th>
 <th><span class="th-content">Status</span></th>
@@ -681,8 +681,9 @@
           <input type="text" name="pic_name" maxlength="150" placeholder="Enter PIC Name" class="modal-form-input">
         </div>
         <div class="modal-form-group">
-          <label class="modal-form-label">Product</label>
-          <input type="text" name="product_id" placeholder="Enter Product Name/ID" class="modal-form-input">
+          <label class="modal-form-label">Department</label>
+          <input type="text" name="product_id" placeholder="Enter Department Name/ID" class="modal-form-input">
+
         </div>
         <div class="modal-form-group full-width">
           <label class="modal-form-label">Status <span class="required">*</span></label>
@@ -764,8 +765,9 @@
           <input type="text" name="pic_name" maxlength="150" placeholder="Enter PIC Name" class="modal-form-input">
         </div>
         <div class="modal-form-group">
-          <label class="modal-form-label">Product</label>
-          <input type="text" name="product_id" placeholder="Enter Product Name/ID" class="modal-form-input">
+          <label class="modal-form-label">Department</label>
+          <input type="text" name="product_id" placeholder="Enter Department Name/ID" class="modal-form-input">
+
         </div>
         <div class="modal-form-group full-width">
           <label class="modal-form-label">Status <span class="required">*</span></label>
@@ -916,8 +918,9 @@ function renderCompletedTable(page = 1) {
     { key: 'assign_to_id', label: 'Assign To' },
     { key: 'company_name', label: 'Company', render: r => (r.company_name ?? r.company_id ?? '') },
     { key: 'pic_name',     label: 'PIC' },
-    { key: 'product_name', label: 'Product', render: r => (r.product_name ?? r.product_id ?? '') },
-    { key: 'task',         label: 'Task' },
+   { key: 'task',         label: 'Task' },
+{ key: 'product_name', label: 'Department', render: r => (r.product_name ?? r.product_id ?? '') },
+
     { key: 'remarks',      label: 'Remarks' },
     { key: 'type_label',   label: 'Int/Client', render: r => uiTypeLabel(r.type_label) },
     { key: 'action',       label: 'Action' }, // 🔴 NEW: Action column
@@ -1285,8 +1288,8 @@ function renderPreviewTable(rows) {
     { key: 'assign_to_id', labelHtml: '<span class="th-2line"><span class="top">ASSIGN</span><span class="sub">TO</span></span>' },
     { key: 'company_name', label: 'Company', render: r => (r.company_name ?? r.company_id ?? '') },
     { key: 'pic_name',     label: 'PIC' },
-    { key: 'product_name', label: 'Product', render: r => (r.product_name ?? r.product_id ?? '') },
-    { key: 'task',         label: 'Task' },
+   { key: 'task',         label: 'Task' },
+{ key: 'product_name', label: 'Department', render: r => (r.product_name ?? r.product_id ?? '') },
     { key: 'remarks',      label: 'Remarks' },
     { key: 'type_label',   label: 'Int/Client', render: r => uiTypeLabel(r.type_label) },
     { key: 'status',       label: 'Status', render: r => getStatusSelect(r) },
@@ -1838,8 +1841,8 @@ return `
     <td ${cellStyle}>${r.assign_to_id ?? '-'}</td>
     <td ${cellStyle}>${r.company_name ?? r.company_id ?? '-'}</td>
     <td ${cellStyle}>${r.pic_name ?? '-'}</td>
-    <td ${cellStyle}>${r.product_name ?? r.product_id ?? '-'}</td>
-    <td ${cellStyle}>${r.task ?? r.task_name ?? r.task_id ?? '-'}</td>
+   <td ${cellStyle}>${r.task ?? r.task_name ?? r.task_id ?? '-'}</td>
+<td ${cellStyle}>${r.product_name ?? r.product_id ?? '-'}</td>
     <td ${cellStyle} class="truncate max-w-200" title="${(r.remarks||'').replace(/"/g,'&quot;')}">${r.remarks ?? '-'}</td>
     <td ${cellStyle}>${uiTypeLabel(r.type_label)}</td>
     <td ${cellStyle}>${statusBadge(r.status, overdue)}</td>
@@ -2219,7 +2222,7 @@ window.getFilters = getFilters;
               <div class="detail-value">${d.pic_name ?? '-'}</div>
             </div>
             <div class="detail-item">
-              <div class="detail-label">Product</div>
+              <div class="detail-label">Department</div>
               <div class="detail-value">${d.product_name ?? d.product_id ?? '-'}</div>
             </div>
             <div class="detail-item">
