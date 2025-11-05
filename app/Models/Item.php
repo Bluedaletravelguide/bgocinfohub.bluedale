@@ -84,31 +84,44 @@ class Item extends Model
     // 🔴 FUNCTION CLEAR QUERY CACHE ONLY (Ringan & Aman)
 
     // Add near other query helpers
-    public function scopeOwnedBy($query, $userId, ?User $user = null)
+   public function scopeOwnedBy($query, $userId = null, ?User $user = null)
 {
-    // Get user object if not provided
-    if (!$user && $userId) {
-        $user = User::find($userId);
-    }
-
+    // Normalisasi user
+    $user = $user ?: ($userId ? User::find($userId) : Auth::user());
     if (!$user) {
-        return $query->whereRaw('1 = 0'); // Return empty if no user
+        return $query->whereRaw('1=0'); // tidak ada user -> kosongkan
     }
 
-    $userIdStr = (string) $userId;
-    $userEmail = $user->email;
-    $userName = $user->name;
+    $hasUserCols = Schema::hasColumn('items', 'assign_to_user_id')
+                  && Schema::hasColumn('items', 'assign_by_user_id');
 
-    return $query->where(function ($q) use ($userIdStr, $userEmail, $userName) {
-        // Match by ID (as string)
-        $q->where('assign_to_id', $userIdStr)
-          ->orWhere('assign_by_id', $userIdStr)
-          // Match by email
-          ->orWhere('assign_to_id', 'LIKE', $userEmail)
-          ->orWhere('assign_by_id', 'LIKE', $userEmail)
-          // Match by name
-          ->orWhere('assign_to_id', 'LIKE', '%' . $userName . '%')
-          ->orWhere('assign_by_id', 'LIKE', '%' . $userName . '%');
+    $uid   = (int) $user->id;
+    $uidS  = (string) $user->id;
+    $email = (string) ($user->email ?? '');
+    $name  = trim((string) ($user->name ?? ''));
+
+    return $query->where(function ($q) use ($hasUserCols, $uid, $uidS, $email, $name) {
+        // 1) Skema baru (FK ke users.id) — pakai jika kolom ada
+        if ($hasUserCols) {
+            $q->where('assign_to_user_id', $uid)
+              ->orWhere('assign_by_user_id', $uid);
+        }
+
+        // 2) Fallback skema lama (varchar)
+        $q->orWhere('assign_to_id', $uidS)
+          ->orWhere('assign_by_id', $uidS);
+
+        if ($email !== '') {
+            // email cocok persis (tidak perlu LIKE)
+            $q->orWhere('assign_to_id', $email)
+              ->orWhere('assign_by_id', $email);
+        }
+
+        if ($name !== '') {
+            // nama sering disimpan campur teks -> pakai LIKE
+            $q->orWhere('assign_to_id', 'LIKE', '%'.$name.'%')
+              ->orWhere('assign_by_id', 'LIKE', '%'.$name.'%');
+        }
     });
 }
     protected static function clearQueryCache()
