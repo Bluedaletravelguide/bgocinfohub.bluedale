@@ -11,21 +11,24 @@ class Kernel extends ConsoleKernel
      * Define the application's command schedule.
      */
     protected function schedule(Schedule $schedule): void
-    {
-        // Admin digest at 9 AM
-        $schedule->command('items:send-deadline-reminders')->dailyAt('09:00');
+{
+    // Admin digest at 12:00 MYT
+    $schedule->command('items:send-deadline-reminders')
+             ->dailyAt('12:00')
+             ->timezone('Asia/Kuala_Lumpur');
 
-        // User-specific digests at 8 AM
-        $schedule->call(function () {
-            $users = \App\Models\User::whereNotNull('email')
-                ->where('role', '!=', 'admin')  // Skip admins (they get the admin digest)
-                ->get();
+    // User-specific digests at 12:00 MYT
+    $schedule->call(function () {
+        $users = \App\Models\User::whereNotNull('email')
+            ->where('role', '!=', 'admin')
+            ->get();
 
-            foreach ($users as $user) {
-                \App\Jobs\SendUserDigestJob::dispatch($user->id);
-            }
-        })->dailyAt('08:00');
-    }
+        foreach ($users as $user) {
+            \App\Jobs\SendUserDigestJob::dispatch($user->id);
+        }
+    })->dailyAt('12:00')->timezone('Asia/Kuala_Lumpur');
+}
+
 
     /**
      * Register the commands for the application.
