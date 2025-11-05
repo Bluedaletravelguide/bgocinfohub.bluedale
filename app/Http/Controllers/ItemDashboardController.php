@@ -41,54 +41,89 @@ protected function baseQuery(array $filters)
 {
     $q = Item::query()->select('items.*');
 
+    // 🔐 Ownership scope (mirror export rule)
+    $user = Auth::user();
+    $isAdmin = $user && ($user->role === 'admin');
+
+    if (!$isAdmin) {
+        if (!$user) {
+            // Guests should see nothing
+            $q->whereRaw('1=0');
+            return $q;
+        }
+
+        $email = strtolower($user->email ?? '');
+        $name  = strtolower($user->name  ?? '');
+
+        // assign_* are VARCHAR; match by email OR name (case-insensitive, partial ok)
+        $q->where(function ($sub) use ($email, $name) {
+            $sub->whereRaw('LOWER(items.assign_to_id) LIKE ?', ["%{$email}%"])
+                ->orWhereRaw('LOWER(items.assign_by_id) LIKE ?', ["%{$email}%"])
+                ->orWhereRaw('LOWER(items.assign_to_id) LIKE ?', ["%{$name}%"])
+                ->orWhereRaw('LOWER(items.assign_by_id) LIKE ?', ["%{$name}%"]);
+        });
+    }
+
+    // ⏱ Date filters
     if (!empty($filters['date_in_from']))  $q->whereDate('items.date_in', '>=', $filters['date_in_from']);
     if (!empty($filters['date_in_to']))    $q->whereDate('items.date_in', '<=', $filters['date_in_to']);
-    if (!empty($filters['deadline_from'])) $q->whereDate('items.deadline','>=', $filters['deadline_from']);
-    if (!empty($filters['deadline_to']))   $q->whereDate('items.deadline','<=', $filters['deadline_to']);
+    if (!empty($filters['deadline_from'])) $q->whereDate('items.deadline', '>=', $filters['deadline_from']);
+    if (!empty($filters['deadline_to']))   $q->whereDate('items.deadline', '<=', $filters['deadline_to']);
 
-    // 🔴 Special handling for virtual "Expired"
+    // 🧮 Virtual “Expired” (must be fully grouped to avoid orWhere bleed)
     if (!empty($filters['status']) && strcasecmp($filters['status'], 'Expired') === 0) {
         $q->where(function ($qq) {
-            $qq->whereDate('items.deadline', '<', now()->toDateString())
-               ->whereNotIn('items.status', ['Completed','Done','Cancelled','Expired'])
-               ->orWhere('items.status', 'Expired'); // real expired if someone set it
+            $qq->where(function ($w) {
+                    $w->whereDate('items.deadline', '<', now()->toDateString())
+                      ->whereNotIn('items.status', ['Completed','Done','Cancelled','Expired']);
+                })
+               ->orWhere('items.status', 'Expired'); // explicitly marked expired
         });
-        unset($filters['status']); // prevent the default equality filter below
+        unset($filters['status']); // prevent default equality below
     }
 
+    // 🔎 Other exact/like filters
     foreach (['assign_by_id','assign_to_id','type_label','company_id','pic_name','product_id','status'] as $f) {
         if (!empty($filters[$f])) {
-            $f === 'pic_name'
-                ? $q->where("items.$f", 'like', '%'.$filters[$f].'%')
-                : $q->where("items.$f", $filters[$f]);
+            if ($f === 'pic_name') {
+                $q->where("items.$f", 'like', '%'.$filters[$f].'%');
+            } else {
+                $q->where("items.$f", $filters[$f]);
+            }
         }
     }
-
-    // // ✅ Expose a UI status that matches your frontend logic
-    // $q->addSelect(DB::raw("
-    //     CASE
-    //       WHEN items.deadline IS NOT NULL
-    //        AND DATE(items.deadline) < CURDATE()
-    //        AND items.status NOT IN ('Completed','Done','Cancelled','Expired')
-    //       THEN 'Expired'
-    //       ELSE items.status
-    //     END AS status_ui
-    // "));
 
     return $q;
 }
 
 
 
-  public function index(Request $request)
+public function index(Request $request)
 {
     // Authorization: anyone logged in can view
     $this->authorize('viewAny', Item::class);
+
+    $user = Auth::user();
+    $isAdmin = $user && ($user->role === 'admin');
+    $email = strtolower($user->email ?? '');
+    $name  = strtolower($user->name  ?? '');
+
+    // Helper closure to apply ownership scope to a query
+    $scope = function ($q) use ($isAdmin, $email, $name) {
+        if ($isAdmin) return;
+        $q->where(function ($sub) use ($email, $name) {
+            $sub->whereRaw('LOWER(assign_to_id) LIKE ?', ["%{$email}%"])
+                ->orWhereRaw('LOWER(assign_by_id) LIKE ?', ["%{$email}%"])
+                ->orWhereRaw('LOWER(assign_to_id) LIKE ?', ["%{$name}%"])
+                ->orWhereRaw('LOWER(assign_by_id) LIKE ?', ["%{$name}%"]);
+        });
+    };
 
     // Distinct Assign By
     $assignBy = Item::query()
         ->select('assign_by_id')
         ->whereNotNull('assign_by_id')->where('assign_by_id', '!=', '')
+        ->tap($scope)
         ->groupBy('assign_by_id')
         ->orderBy('assign_by_id')
         ->pluck('assign_by_id');
@@ -97,6 +132,7 @@ protected function baseQuery(array $filters)
     $assignTo = Item::query()
         ->select('assign_to_id')
         ->whereNotNull('assign_to_id')->where('assign_to_id', '!=', '')
+        ->tap($scope)
         ->groupBy('assign_to_id')
         ->orderBy('assign_to_id')
         ->pluck('assign_to_id');
@@ -105,6 +141,7 @@ protected function baseQuery(array $filters)
     $typeLabels = Item::query()
         ->select('type_label')
         ->whereNotNull('type_label')->where('type_label', '!=', '')
+        ->tap($scope)
         ->groupBy('type_label')
         ->orderBy('type_label')
         ->pluck('type_label');
@@ -113,6 +150,7 @@ protected function baseQuery(array $filters)
     $companies = Item::query()
         ->select('company_id')
         ->whereNotNull('company_id')->where('company_id', '!=', '')
+        ->tap($scope)
         ->groupBy('company_id')
         ->orderBy('company_id')
         ->pluck('company_id');
@@ -121,6 +159,7 @@ protected function baseQuery(array $filters)
     $picNames = Item::query()
         ->select('pic_name')
         ->whereNotNull('pic_name')->where('pic_name', '!=', '')
+        ->tap($scope)
         ->groupBy('pic_name')
         ->orderBy('pic_name')
         ->pluck('pic_name');
@@ -129,6 +168,7 @@ protected function baseQuery(array $filters)
     $products = Item::query()
         ->select('product_id')
         ->whereNotNull('product_id')->where('product_id', '!=', '')
+        ->tap($scope)
         ->groupBy('product_id')
         ->orderBy('product_id')
         ->pluck('product_id');
@@ -139,7 +179,7 @@ protected function baseQuery(array $filters)
     // Combine everything for the Blade view
     $distinct = [
         'assign_by'   => $assignBy,
-        'assign_to'   => $assignTo, // ✅ fixed variable name
+        'assign_to'   => $assignTo,
         'type_labels' => $typeLabels,
         'companies'   => $companies,
         'pic_names'   => $picNames,
