@@ -414,8 +414,8 @@ public function index(Request $request)
                 $titleParts = [
                     $row->assign_to_id ?? '-',
                     $row->task         ?? '-',
+                    $row->product_id       ?? '-',
                     $row->company_id   ?? '-',
-                    $row->status       ?? '-',
 
                 ];
                 return [
